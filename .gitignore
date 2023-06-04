@@ -1,2 +1,5 @@
 *.zip
-hf.portal.txt
+hf.portal*.txt
+__pycache__/
+chatgpt.py
+test.py

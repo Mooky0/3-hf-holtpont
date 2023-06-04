@@ -1,3 +1,6 @@
+import sys
+
+## Néha akarunk kiíratni néha nem. A debugvar global bool-al ezt lehet állítani.
 def debug(s : str):
     if debugvar:print(s) 
 
@@ -13,28 +16,33 @@ class Graph():
         else:
             self.graph[u] = [v]
     
-    def delete(self, task):
+    def delete_task(self, task):
         try:
             del self.graph[task.name]
         except(KeyError):
             pass
-        for v in self.graph.values():
+        to_del = []
+        for k, v in self.graph.items():
             try:
-                if len(v) > 1:
+                if task.name in v and len(v) > 1:
                     v.remove(task.name)
-                else:
-                    del v
+                elif task.name in v:
+                    to_del.append(k)
             except(ValueError):
                 pass
+
         try:
-            m = task.moves[task.move]
-            first = wait[m[1:]].pop(0)
-            ##g.removeEdge(m[1:], self.name)
-            g.addEdge(m[1:], first) ## first in line
-            fifo[first].move += 1
-            self.removeEdge(first, m[1:])
+            for i in to_del:
+                del self.graph[i]
+                first = wait[i].pop(0)
+                #g.removeEdge(first, i)
+                self.removeEdge(first, i)
+                g.addEdge(i, first) ## first in line
+                fifo[first].move += 1
         except(KeyError, IndexError):
-            return
+            pass
+        for i in to_del:
+            pass
 
 
     def __str__(self) -> str:
@@ -93,6 +101,7 @@ class Task():
         self.name = _name
         self.moves = _moves.copy()
         self.move = 0
+        self.alive = True
 
     def __str__(self) -> str:
         return self.name + ": " + self.moves.__str__()
@@ -101,6 +110,7 @@ class Task():
         return self.name in g.graph.keys()
 
     def step(self, g : Graph):
+        global answear
         if (self.is_waiting(g)):
             return
         else:
@@ -117,7 +127,7 @@ class Task():
                     g.addEdge(self.name, m[1:]) ## várakoztatjuk
                     if g.isCyclic(): ## holtpont lenne visszautasítjuk
                         g.removeEdge(self.name, m[1:])
-                        print(self.name + "," + str(self.move+1) + "," + m[1:])
+                        answear += (self.name + "," + str(self.move+1) + "," + m[1:] + '\n')
                         self.move += 1
                         return
                     else:
@@ -219,30 +229,33 @@ class FIFO:
         self.tasks.append(task)
 
 def exit_task(task : Task):
-    fifo.delete(task=task)
-    g.delete(task)
+    ##fifo.delete(task=task)
+    if task.alive == False:
+        return
+    g.delete_task(task)
+    task.alive = False
     return
 
-def main():
+def main(input_str : str):
     global debugvar
-    debugvar = False
     global fifo
     global g
     global wait
+    global answear
+    answear = ''
+    debugvar = False
     wait = {}
     fifo = FIFO()
     g = Graph()
-    line = input()
-    """line not in ['\n', "", " "]"""
-    while(line not in ['\n', "", " "]):
+    for i in input_str.split('\n'):
         ##print(line)
-        line = list(map(str.strip, line.split(',')))
+        line = list(map(str.strip, i.split(',')))
         task : Task = Task(line[0], line[1:])
         fifo.push(task)
-        try:
-            line = input()
-        except(EOFError):
-            break
+        # try:
+        #     line = input()
+        # except(EOFError):
+        #     break
 
     ##print(fifo)
     global clock
@@ -252,13 +265,14 @@ def main():
         clock += 1
 
     debug(g)
+    return answear
     
-    
-    
-    
-
-
-
 
 if '__main__' == __name__:
-    main()
+    local = False
+    if (not local):
+        input_str = sys.stdin.read()
+        answear = main(input_str)
+        print(answear[:-1])
+    else:
+        pass
