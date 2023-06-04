@@ -1,5 +1,3 @@
-debugvar = False
-
 def debug(s : str):
     if debugvar:print(s) 
 
@@ -7,7 +5,6 @@ def debug(s : str):
 class Graph():
     def __init__(self):
         self.graph = {}
-        #self.V = vertices
         self.vertecies = []
  
     def addEdge(self, u, v):
@@ -18,14 +15,26 @@ class Graph():
     
     def delete(self, task):
         try:
-            del self.graph[task]
+            del self.graph[task.name]
         except(KeyError):
             pass
+        for v in self.graph.values():
+            try:
+                if len(v) > 1:
+                    v.remove(task.name)
+                else:
+                    del v
+            except(ValueError):
+                pass
         try:
-            for k, v in self.graph.items():
-                v.remove(task)
-        except(ValueError):
-            pass
+            m = task.moves[task.move]
+            first = wait[m[1:]].pop(0)
+            ##g.removeEdge(m[1:], self.name)
+            g.addEdge(m[1:], first) ## first in line
+            fifo[first].move += 1
+            self.removeEdge(first, m[1:])
+        except(KeyError, IndexError):
+            return
 
 
     def __str__(self) -> str:
@@ -33,7 +42,13 @@ class Graph():
 
     ## assuming it exists
     def removeEdge(self, u, v):
-        del self.graph[u]
+        try:
+            if len(self.graph[u]) > 1:
+                self.graph[u].remove(v)
+            else:
+                del self.graph[u]
+        except(ValueError):
+            pass
 
     def isCyclicUtil(self, v, visited, recStack):
  
@@ -83,10 +98,7 @@ class Task():
         return self.name + ": " + self.moves.__str__()
     
     def is_waiting(self, g : Graph):
-        for keys in g.graph.keys():
-            if (self.name in keys):
-                return True
-        return False
+        return self.name in g.graph.keys()
 
     def step(self, g : Graph):
         if (self.is_waiting(g)):
@@ -125,6 +137,8 @@ class Task():
                     except(KeyError, IndexError):
                         return
                     g.removeEdge(first, m[1:])
+                    g.addEdge(m[1:], first) ## first in line
+                    fifo[first].move += 1
                     debug("del " + m[1:] +" from " + self.name)
                 except(ValueError):
                     pass
@@ -188,7 +202,16 @@ class FIFO:
         return None
     
     def __getitem__(self, key):
-        return self.tasks[key]
+        for i in self.tasks:
+            if (i.name == key):
+                return i
+        return None
+    
+    def __str__(self) -> str:
+        ret: str = ""
+        for i in self.tasks:
+            ret += i.__str__() + '\n'
+        return ret
     
     ## puts an already existing task at the end of the Fifo
     def put_back(self, task : Task):
@@ -198,8 +221,11 @@ class FIFO:
 def exit_task(task : Task):
     fifo.delete(task=task)
     g.delete(task)
+    return
 
 def main():
+    global debugvar
+    debugvar = False
     global fifo
     global g
     global wait
@@ -207,16 +233,23 @@ def main():
     fifo = FIFO()
     g = Graph()
     line = input()
+    """line not in ['\n', "", " "]"""
     while(line not in ['\n', "", " "]):
-        line = line.split(',')
+        ##print(line)
+        line = list(map(str.strip, line.split(',')))
         task : Task = Task(line[0], line[1:])
         fifo.push(task)
         try:
             line = input()
-        except (EOFError):
+        except(EOFError):
             break
+
+    ##print(fifo)
+    global clock
+    clock = 0
     for i in range(30):
         fifo.step(g)
+        clock += 1
 
     debug(g)
     
